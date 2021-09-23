@@ -48,7 +48,7 @@ func (s *Server) handleFileRequests(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	session, filename := matches[1], matches[2]
+	session, filename := strings.ToUpper(matches[1]), matches[2]
 	if filename == "" {
 		s.handleSessionList(writer, request, session)
 		return
