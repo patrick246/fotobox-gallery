@@ -2,10 +2,16 @@ package server
 
 import (
 	"archive/zip"
+	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/nfnt/resize"
 	"html/template"
+	"image"
+	_ "image/gif"
+	"image/jpeg"
+	_ "image/png"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,6 +19,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -138,6 +145,19 @@ func (s *Server) handleSessionDownload(writer http.ResponseWriter, request *http
 }
 
 func (s *Server) handleDirectAccess(writer http.ResponseWriter, request *http.Request, session, filename string) {
+	thumbnail, err := strconv.ParseBool(request.URL.Query().Get("thumbnail"))
+	if err != nil {
+		thumbnail = false
+	}
+
+	var mimeType string
+	switch {
+	case strings.HasSuffix(filename, ".png"):
+		mimeType = "image/png"
+	case strings.HasSuffix(filename, ".jpg"), strings.HasSuffix(filename, ".jpeg"):
+		mimeType = "image/jpeg"
+	}
+
 	imagePath := path.Join(s.dataDirectory, session, filename)
 	file, err := os.Open(imagePath)
 	if errors.Is(err, syscall.ENOENT) {
@@ -150,11 +170,42 @@ func (s *Server) handleDirectAccess(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	writer.Header().Set("Content-Type", "image/jpeg")
-	_, err = io.Copy(writer, file)
+	var imgSource io.Reader = file
+	if thumbnail {
+		imgSource, err = resizeImage(file, s.thumbnailWidth)
+		if err != nil {
+			log.Printf("resize failed: %s. continuing with full-size image", err.Error())
+			imgSource = file
+		} else {
+			// We always re-encode as JPEG
+			mimeType = "image/jpeg"
+		}
+	}
+
+	writer.Header().Set("Content-Type", mimeType)
+	_, err = io.Copy(writer, imgSource)
 	if err != nil {
 		log.Printf("image send error: %s", err.Error())
 		http.Error(writer, "Internal Server Error", 500)
 		return
 	}
+}
+
+func resizeImage(imgSource io.Reader, width uint) (io.Reader, error) {
+	img, _, err := image.Decode(imgSource)
+	if err != nil {
+		return nil, err
+	}
+
+	resized := resize.Resize(width, 0, img, resize.Bilinear)
+
+	buffer := &bytes.Buffer{}
+
+	err = jpeg.Encode(buffer, resized, &jpeg.Options{
+		Quality: jpeg.DefaultQuality,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return buffer, nil
 }

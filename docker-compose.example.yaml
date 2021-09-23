@@ -1,0 +1,16 @@
+version: '3'
+services:
+  gallery:
+    image: ghcr.io/patrick246/fotobox-gallery:v0.0.2
+    volumes:
+      - ./data:/data
+    networks:
+      - web
+    labels:
+      - traefik.frontend.rule=Host:fotobox.example.com
+      - traefik.docker.network=web
+      - traefik.port=8080
+      - traefik.enable=true
+networks:
+  web:
+    external: true

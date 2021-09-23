@@ -7,10 +7,12 @@ import (
 	"os"
 )
 
-var dataDir string
-
 func main() {
+	var dataDir string
+	var thumbnailWidth uint
+
 	flag.StringVar(&dataDir, "data-dir", "", "The data directory to render photos from")
+	flag.UintVar(&thumbnailWidth, "thumbnail.width", 400, "Thumbnail width for session preview")
 	flag.Parse()
 
 	if dataDir == "" {
@@ -20,7 +22,7 @@ func main() {
 		dataDir = "/data"
 	}
 
-	srv := server.NewServer(8080, dataDir)
+	srv := server.NewServer(8080, dataDir, thumbnailWidth)
 	log.Println("listening on :8080")
 	err := srv.ListenAndServe()
 	if err != nil {

@@ -13,15 +13,16 @@ var httpRequestDurationHistogram = prometheus.NewHistogramVec(prometheus.Histogr
 }, []string{"path", "code", "method"})
 
 type Server struct {
-	server        http.Server
-	dataDirectory string
+	server         http.Server
+	dataDirectory  string
+	thumbnailWidth uint
 }
 
 func init() {
 	prometheus.MustRegister(httpRequestDurationHistogram)
 }
 
-func NewServer(port uint, dataDirectory string) *Server {
+func NewServer(port uint, dataDirectory string, thumbnailWidth uint) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/.well-known/ready", func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(200)
@@ -33,7 +34,8 @@ func NewServer(port uint, dataDirectory string) *Server {
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: mux,
 		},
-		dataDirectory: dataDirectory,
+		dataDirectory:  dataDirectory,
+		thumbnailWidth: thumbnailWidth,
 	}
 
 	mux.Handle("/pictures/", promhttp.InstrumentHandlerDuration(httpRequestDurationHistogram.MustCurryWith(prometheus.Labels{

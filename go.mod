@@ -2,7 +2,10 @@ module github.com/patrick246/fotobox-gallery
 
 go 1.17
 
-require github.com/prometheus/client_golang v1.11.0
+require (
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/prometheus/client_golang v1.11.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
